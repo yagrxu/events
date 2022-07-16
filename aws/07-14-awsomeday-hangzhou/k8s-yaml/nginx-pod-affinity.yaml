@@ -6,7 +6,7 @@ spec:
   selector:
     matchLabels:
       app: nginx
-  replicas: 6 # tells deployment to run 2 pods matching the template
+  replicas: 6
   template:
     metadata:
       labels:
@@ -27,5 +27,5 @@ spec:
                   operator: In
                   values:
                   - nginx
-              topologyKey: failure-domain.beta.kubernetes.io/zone
+              topologyKey: kubernetes.io/hostname # failure-domain.beta.kubernetes.io/zone
             weight: 100

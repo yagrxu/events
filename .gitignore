@@ -1,5 +1,4 @@
+**/.DS_STore
+**/.terraform.hcl.lock
 **/.terraform/
-**/.DS_Store
-**/.terraform.lock.hcl
-
 
