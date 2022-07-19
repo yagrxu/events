@@ -137,7 +137,7 @@ terraform apply --auto-approve
 
 And VPC/EKS resources are created in your account
 
-#### Step 3: Verify the EKS cluster 
+#### Step 3: Verify the EKS cluster
 
 ```shell
 # aws eks update-kubeconfig --name event_0714 --kubeconfig ~/.kube/config-event-0714 --region ap-southeast-1 --alias config-event-0714
@@ -151,7 +151,101 @@ export KUBE_CONFIG_PATH=~/.kube/{kubeconfig-filename}
 kubectl cluster-info
 ```
 
-### 5. Clean Up
+#### Step 4. Apply yaml files
+
+go to ./kube-yaml directory
+
+- Affinity
+
+  ```shell
+  # this demo show how anti-affinity works
+  # you can specify different topology key to see how the pods are allocated
+  # "topologyKey: kubernetes.io/hostname" OR "topologyKey: failure-domain.beta.kubernetes.io/zone"
+  # Would like to understand more? search affinity vs antiaffinity in google.com
+  kubectl apply -f nginx-pod-affinity.yaml
+  # to delete resources, use the command below
+  kubectl delete -f nginx-pod-affinity.yaml
+  ```
+
+  
+
+- Topology
+
+  ```shell
+  # topologySpreadConstraints can also help to achieve the pods allocation
+  # maxSkew is use to define how much unbalance can happen
+  # whenUnsatisfiable: ScheduleAnyway or DoNotSchedule
+  kubectl apply -f nginx-topology.yaml
+  # to delete resources, use the command below
+  kubectl delete -f nginx-topology.yaml
+  ```
+
+- HPA
+
+  ```shell
+  # prepare resource
+  # check the rules that defined in hpa.yaml
+  kubectl apply -f nginx-demo.yaml
+  kubectl apply -f service.yaml
+  kubectl apply -f hpa.yaml
+  
+  # pod started with 2, and HPA min is 1, if you let it be as it is for some time, you can see the pod number will be decresed to 1
+  # run load generator as below "php-apache-service" is the service name
+  kubectl run -i --tty load-generator --rm --image=busybox --restart=Never -- /bin/sh -c "while sleep 0.01; do wget -q -O- http://php-apache-service; done"
+  # after a while, the pod number will increase. you can monitor the overall CPU usage update by using the command below
+  watch -n 5 'kubectl get hpa'
+  
+  # clean up after you finish the test
+  kubectl delete -f hpa.yaml
+  kubectl delete -f service.yaml
+  kubectl delete -f nginx-demo.yaml
+  ```
+
+  
+
+- VPA - VPA is not production ready. Do not use it in your production environment
+
+  ```shell
+  # prepare resource
+  # check the rules that defined in vpa.yaml
+  kubectl apply -f nginx-demo.yaml
+  kubectl apply -f service.yaml
+  kubectl apply -f vpa.yaml
+  
+  # the same process to generate load
+  kubectl run -i --tty load-generator --rm --image=busybox --restart=Never -- /bin/sh -c "while sleep 0.01; do wget -q -O- http://php-apache-service; done"
+  # monitor the changes
+  watch -n 5 "kubectl get vpa"
+  
+  # clean up after you finish the test
+  kubectl delete -f vpa.yaml
+  kubectl delete -f service.yaml
+  kubectl delete -f nginx-demo.yaml
+  ```
+
+  
+
+- Node Based Cluster Autoscaler
+
+  ```shell
+  # you might have notice that the resource from VPA/HPA might not have been initialized as resource limitations
+  # the command below will help to autoscale the nodes
+  # update the profile name - which is defined in your cluster node, find in IAM
+  kubectl apply -f cluster-provisioner.yaml
+  
+  # run either HPA or VPA
+  
+  # check the node status
+  kubectl get nodes
+  
+  # Clean up
+  # You MUST delete the provisioner resources. Other wise the EC2 generated from the cluster autoscaler will not be destroyed from terraform. Ad it will block resources deletion.
+  kubectl delete -f cluster-provisioner.yaml
+  ```
+
+  
+
+### Step 5. Clean up
 
 Run the below command under `/devops` and `/infrastructure` respectively
 
@@ -160,8 +254,6 @@ Run the below command under `/devops` and `/infrastructure` respectively
 terraform init
 terraform destroy --auto-approve
 ```
-
-
 
 ## What Next?
 
